@@ -267,7 +267,7 @@ class AviClone:
                      other_tenant=None, other_cloud=None,
                      force_clone=None, force_unique_name=False,
                      t_obj=None, ot_obj=None, oc_obj=None,
-                     server_map=None):
+                     server_map=None, vrf_obj=None):
         """
         Clones an object other than a Virtual Service or GSLB Service
 
@@ -374,22 +374,22 @@ class AviClone:
                 created_objs, warnings = self._process_pool(
                     p_obj=old_obj, t_obj=t_obj, ot_obj=ot_obj,
                     oc_obj=oc_obj, force_clone=force_clone,
-                    server_map=server_map)
+                    server_map=server_map, vrf_obj=vrf_obj)
             elif object_type == 'poolgroup':
                 created_objs, warnings = self._process_poolgroup(
                     pg_obj=old_obj, t_obj=t_obj, ot_obj=ot_obj,
                     oc_obj=oc_obj, force_clone=force_clone,
-                    server_map=server_map)
+                    server_map=server_map, vrf_obj=vrf_obj)
             elif object_type == 'httppolicyset':
                 created_objs, warnings = self._process_httppolicyset(
                     ps_obj=old_obj, t_obj=t_obj, ot_obj=ot_obj,
                     oc_obj=oc_obj, force_clone=force_clone,
-                    server_map=server_map)
+                    server_map=server_map, vrf_obj=vrf_obj)
             elif object_type == 'vsdatascriptset':
                 created_objs, warnings = self._process_vsdatascriptset(
                     ds_obj=old_obj, t_obj=t_obj, ot_obj=ot_obj,
                     oc_obj=oc_obj, force_clone=force_clone,
-                    server_map=server_map)
+                    server_map=server_map, vrf_obj=vrf_obj)
             elif object_type == 'networksecuritypolicy':
                 created_objs, warnings = self._process_networksecuritypolicy(
                     ns_obj=old_obj, t_obj=t_obj, ot_obj=ot_obj,
@@ -468,7 +468,7 @@ class AviClone:
                             % (ex, object_type, old_name, new_name))
 
     def _process_pool(self, p_obj, t_obj, ot_obj, oc_obj,
-                      force_clone, server_map=None):
+                      force_clone, server_map=None, vrf_obj=None):
         """
         Performs pool-specific manipulations on the cloned object
         """
@@ -519,8 +519,10 @@ class AviClone:
 
                 # If moving to a different cloud, pool will be moved to the
                 # default global VRF in the target cloud
-
-                p_obj.pop('vrf_ref', None)
+                if vrf_obj is None:
+                    p_obj.pop('vrf_ref', None)
+                else:
+                    p_obj['vrf_ref'] = '/api/vrfcontext?name=' + vrf_obj
         except Exception as ex:
             # If an exception occurred, delete any intermediate objects we
             # have created
@@ -533,7 +535,7 @@ class AviClone:
         return created_objs, warnings
 
     def _process_poolgroup(self, pg_obj, t_obj, ot_obj, oc_obj, force_clone,
-                           server_map=None):
+                           server_map=None, vrf_obj=None):
         """
         Performs poolgroup-specific manipulations on the cloned object, such
         as cloning the poolgroup members
@@ -559,7 +561,7 @@ class AviClone:
                             old_name=p_path, new_name=new_pool_name,
                             t_obj=t_obj, ot_obj=ot_obj, oc_obj=oc_obj,
                             force_clone=force_clone, force_unique_name=True,
-                            server_map=server_map)
+                            server_map=server_map, vrf_obj=vrf_obj)
 
                         count += 1
 
@@ -587,7 +589,7 @@ class AviClone:
         return created_objs, warnings
 
     def _process_httppolicyset(self, ps_obj, t_obj, ot_obj, oc_obj,
-                               force_clone, server_map):
+                               force_clone, server_map, vrf_obj):
         """
         Performs httppolicyset-specific manipulations on the cloned object such
         as cloning pools and poolgroups used in the policy rules
@@ -612,7 +614,7 @@ class AviClone:
                                                  p_obj=policy_obj, t_obj=t_obj,
                                                  ot_obj=ot_obj, oc_obj=oc_obj,
                                                  force_clone=force_clone,
-                                                 server_map=server_map)
+                                                 server_map=server_map, vrf_obj=vrf_obj)
                     created_objs.extend(new_objs)
                     warnings.extend(new_warnings)
         except Exception as ex:
@@ -867,7 +869,7 @@ class AviClone:
         return created_objs, warnings
 
     def _process_policy_rules(self, new_policy_name, p_obj, t_obj, ot_obj,
-                              oc_obj, force_clone, server_map=None):
+                              oc_obj, force_clone, server_map=None, vrf_obj=None):
         """
         Process the network/DNS/HTTP policy rules
         """
@@ -938,7 +940,7 @@ class AviClone:
                                 t_obj=t_obj, ot_obj=ot_obj, oc_obj=oc_obj,
                                 force_clone=force_clone,
                                 force_unique_name=True,
-                                server_map=server_map)
+                                server_map=server_map,vrf_obj=vrf_obj)
                             created_objs.append(p_obj)
                             created_objs.extend(p_created_objs)
                             warnings.extend(p_warnings)
@@ -970,7 +972,7 @@ class AviClone:
                                 t_obj=t_obj, ot_obj=ot_obj, oc_obj=oc_obj,
                                 force_clone=force_clone,
                                 force_unique_name=True,
-                                server_map=server_map)
+                                server_map=server_map, vrf_obj=vrf_obj)
                             created_objs.append(pg_obj)
                             created_objs.extend(pg_created_objs)
                             warnings.extend(pg_warnings)
@@ -989,7 +991,7 @@ class AviClone:
         return created_objs, warnings
 
     def _process_vsdatascriptset(self, ds_obj, t_obj, ot_obj, oc_obj,
-                               force_clone, server_map):
+                               force_clone, server_map, vrf_obj):
         """
         Performs datascript-specific manipulations on the cloned object such
         as cloning pools, pool groups, string groups, ip groups referenced
@@ -1023,7 +1025,7 @@ class AviClone:
                             t_obj=t_obj, ot_obj=ot_obj, oc_obj=oc_obj,
                             force_clone=force_clone,
                             force_unique_name=True,
-                            server_map=server_map)
+                            server_map=server_map, vrf_obj=vrf_obj)
 
                         created_objs.append(p_obj)
                         created_objs.extend(p_created_objs)
@@ -1051,7 +1053,7 @@ class AviClone:
                             t_obj=t_obj, ot_obj=ot_obj, oc_obj=oc_obj,
                             force_clone=force_clone,
                             force_unique_name=True,
-                            server_map=server_map)
+                            server_map=server_map, vrf_obj=vrf_obj)
 
                         created_objs.append(pg_obj)
                         created_objs.extend(pg_created_objs)
@@ -1542,7 +1544,7 @@ class AviClone:
                  new_fqdns=None, new_segroup=None, tenant=None,
                  other_tenant=None, other_cloud=None, force_clone=None,
                  use_internal_ipam=False, server_map=None,
-                 new_parent=None):
+                 new_parent=None, new_vrf=None):
 
         """
         Clones a Virtual Service object
@@ -1590,6 +1592,8 @@ class AviClone:
                            pool member replacement
         :param new_parent: When cloning an SNI child VS, specifies a different
                            VS name to be a parent for the cloned child VS
+        :param new_vrf: when cloning if virtualservice is being moved to a different vrf
+                        specify vrf name to move VS to
         :return: tuple - json representation of the cloned VS object, list of
                     additional objects created if any
         :rtype: tuple
@@ -1888,7 +1892,7 @@ class AviClone:
                 p_obj, p_created_objs, p_warnings = self.clone_object(
                     old_name=p_path, new_name=p_name, t_obj=t_obj,
                     ot_obj=ot_obj, oc_obj=oc_obj, force_clone=force_clone,
-                    force_unique_name=True, server_map=server_map)
+                    force_unique_name=True, server_map=server_map, vrf_obj=new_vrf)
 
                 created_objs.append(p_obj)
                 created_objs.extend(p_created_objs)
@@ -1905,7 +1909,7 @@ class AviClone:
                 pg_obj, pg_created_objs, pg_warnings = self.clone_object(
                     old_name=pg_path, new_name=pg_name, t_obj=t_obj,
                     ot_obj=ot_obj, oc_obj=oc_obj, force_clone=force_clone,
-                    force_unique_name=True, server_map=server_map)
+                    force_unique_name=True, server_map=server_map, vrf_obj=new_vrf)
 
                 created_objs.append(pg_obj)
                 created_objs.extend(pg_created_objs)
@@ -1954,10 +1958,14 @@ class AviClone:
 
                 # If moving to a different cloud, Virtual Service will be moved
                 # to the default global VRF in the target cloud
-
-                v_obj.pop('vrf_context_ref', None)
-                if vsvip_obj:
-                    vsvip_obj.pop('vrf_context_ref', None)
+                if new_vrf is None:
+                    v_obj.pop('vrf_context_ref', None)
+                    if vsvip_obj:
+                        vsvip_obj.pop('vrf_context_ref', None)
+                else:
+                    v_obj['vrf_context_ref'] = '/api/vrfcontext?name=' + new_vrf
+                    if vsvip_obj:
+                        vsvip_obj['vrf_context_ref'] = '/api/vrfcontext?name=' + new_vrf
 
             if new_segroup is not None:
                 # Locate SE group by name in the appropriate cloud
@@ -1995,7 +2003,7 @@ class AviClone:
                     ps_obj, ps_created_objs, ps_warnings = self.clone_object(
                         old_name=ps_path, new_name=ps_name, t_obj=t_obj,
                         ot_obj=ot_obj, oc_obj=oc_obj, force_clone=force_clone,
-                        force_unique_name=True, server_map=server_map)
+                        force_unique_name=True, server_map=server_map,vrf_obj=new_vrf)
 
                     polset['http_policy_set_ref'] = ps_obj['url']
                     created_objs.append(ps_obj)
@@ -2054,7 +2062,7 @@ class AviClone:
                     ds_obj, ds_created_objs, ds_warnings = self.clone_object(
                         old_name=ds_path, new_name=ds_name, t_obj=t_obj,
                         ot_obj=ot_obj, oc_obj=oc_obj, force_clone=force_clone,
-                        force_unique_name=True, server_map=server_map)
+                        force_unique_name=True, server_map=server_map,vrf_obj=new_vrf)
 
                     dsset['vs_datascript_set_ref'] = ds_obj['url']
 
@@ -2387,6 +2395,9 @@ if __name__ == '__main__':
     vs_parser.add_argument('-dn', '--fqdns',
         help='The new FQDN or list of FQDNs or auto to derive from the VS name',
         metavar='FQDNs', default='')
+    vs_parser.add_argument('-dvrf', '--destvrf',
+        help='Destination VRF',
+        default='global')
     vs_parser.add_argument('-e', '--enable',
           help='Enable the cloned Virtual Service', action='store_true')
     vs_parser.add_argument('-np', '--newparent',
@@ -2711,7 +2722,7 @@ if __name__ == '__main__':
                              other_cloud=args.tocloud, force_clone=force_clone,
                              use_internal_ipam=args.internalipam,
                              server_map=server_map,
-                             new_parent=args.newparent)
+                             new_parent=args.newparent, new_vrf=args.destvrf)
                     # Get VsVip object if present
                     if 'vsvip_ref' in new_vs:
                         for cloned_obj in cloned_objs:
